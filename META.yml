@@ -1,0 +1,25 @@
+---
+abstract: 'A Public file serving Catalyst Controller'
+author:
+  - 'John Napiorkowski <jjnapiork@cpan.org>'
+build_requires:
+  Test::Most: '0.33'
+configure_requires:
+  ExtUtils::MakeMaker: '6.30'
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 7.04, CPAN::Meta::Converter version 2.143240'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: '1.4'
+name: Catalyst-Controller-Public
+no_index:
+  directory:
+    - t
+    - inc
+requires:
+  Catalyst: '5.90082'
+  Moose: '2.1403'
+  MooseX::MethodAttributes: '0.29'
+  Plack: '1.0033'
+version: '0.001'

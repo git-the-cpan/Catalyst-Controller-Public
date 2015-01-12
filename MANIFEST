@@ -1,0 +1,24 @@
+Changes
+lib/Catalyst/Controller/Public.pm
+lib/Catalyst/ControllerRole/Public.pm
+Makefile.PL
+MANIFEST			This list of files
+README.mkdn
+t/basic.t
+t/lib/MyApp.pm
+t/lib/MyApp/Controller/OnChain.pm
+t/lib/MyApp/Controller/Role.pm
+t/lib/MyApp/Controller/Root.pm
+t/lib/MyApp/Controller/Static.pm
+t/lib/MyApp/root/onchain/base.css
+t/lib/MyApp/root/role/base.css
+t/lib/MyApp/root/role/example/base.css
+t/lib/MyApp/root/static/css/base.css
+t/lib/MyApp/root/static/example.txt
+t/lib/MyApp/root/static/favicon.ico
+t/lib/MyApp/root/static/mylocal/a.html
+t/lib/MyApp/root/static/mylocal/b.txt
+t/lib/MyApp/root/static/not_found.txt
+todo.txt
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
