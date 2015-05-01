@@ -25,7 +25,7 @@ my %WriteMakefileArgs = (
     "Catalyst" => "5.90060",
     "Test::Most" => 0
   },
-  "VERSION" => "0.002",
+  "VERSION" => "0.003",
   "test" => {
     "TESTS" => "t/*.t"
   }
