@@ -1,121 +1,133 @@
 package Catalyst::Controller::Public;
 
 use Moose;
+extends 'Catalyst::Controller';
 
-extends qw/Catalyst::Controller/;
-with 'Catalyst::ControllerRole::Public';
+our $VERSION = '0.002';
 
-our $VERSION = "0.001";
+has show_debugging => (is=>'ro', required=>1, default=>sub {0});
+has cache_control => (is=>'ro', isa=>'Str', predicate=>'has_cache_control');
+has content_types => (is=>'ro', isa=>'ArrayRef[Str]', predicate=>'has_content_types');
+
+has at => (
+  is=>'ro',
+  isa=>'Str',
+  required=>1,
+  default=>'/:namespace/:args');
+
+after 'register_actions' => sub {
+  my ($self, $app) = @_;
+  my $action = $self->create_action(
+    name => 'serve_file',
+    code => sub { },
+    reverse => $self->action_namespace . '/' .'serve_file',
+    namespace => $self->action_namespace,
+    class => ref($self),
+    attributes => {
+      Path => [ $self->action_namespace ],
+      Does => ['Catalyst::ActionRole::Public'],
+      At => [$self->at],
+      ShowDebugging => [$self->show_debugging],
+      ( $self->has_cache_control ? (CacheControl => [$self->cache_control]) : ()),
+      ( $self->has_content_types ? (ContentTypes => $self->content_types)
+        : ()),
+    });
+
+  $app->dispatcher->register( $app, $action );
+};
+
+sub uri_args {
+  my $self = shift;
+  return $self->action_for('serve_file'), @_;
+}
+
+
+__PACKAGE__->meta->make_immutable;
 
 1;
 
 =head1 TITLE
 
-Catalyst::Controller::Public - A controller to serve static files from the public folder
+Catalyst::Controller::Public - mount a public url to files in your Catalyst project
 
 =head1 SYNOPSIS
 
-Simple Case:
-
-    use warnings;
-    use strict;
-
     package MyApp::Controller::Public;
 
-    use base 'Catalyst::Controller::Public';
+    use Moose;
+    extends 'Catalyst::Controller::Public';
 
-    1;
+    __PACKAGE__->meta->make_immutable;
 
-    # http://localhost/public/* => $c->{root}/public/*
+Will create an action that from URL 'localhost/public/a/b/c/d.js' will serve
+file $c->{root} . '/public' . '/a/b/c/d.js'.  Will also set content type, length
+and Last-Modified HTTP headers as needed.  If the file does not exist, will not
+match (allowing possibly other actions to match).
 
-Custom Case:
+You can create a URL for a static file programmtically via the following:
 
-    use warnings;
-    use strict;
-
-    package MyApp::Controller::Static;
-
-    use base 'Catalyst::Controller::Public';
-
-    # localhost/favicon.ico => $HOME/root/static/favicon.ico
-    sub favicon :Path('/favicon.ico') { }
-
-    # localhost/css => $HOME/root/static/css
-    sub css :Path('/css') { }
-
-And This creates the following public and private endpoints
-
-    .-----------------------------------------------------------------+----------.
-    | Class                                                           | Type     |
-    +-----------------------------------------------------------------+----------+
-    | MyApp::Controller::Static                                       | instance |
-    '-----------------------------------------------------------------+----------'
-
-    [debug] Loaded Private actions:
-    .----------------------+--------------------------------------+--------------.
-    | Private              | Class                                | Method       |
-    +----------------------+--------------------------------------+--------------+
-    | /static/favicon      | MyApp::Controller::Static            | favicon      |
-    | /static/serve_file   | MyApp::Controller::Static            | serve_file   |
-    | /static/css          | MyApp::Controller::Static            | css          |
-    | /static/end          | MyApp::Controller::Static            | end          |
-    | /static/begin        | MyApp::Controller::Static            | begin        |
-    '----------------------+--------------------------------------+--------------'
-
-    [debug] Loaded Path actions:
-    .-------------------------------------+--------------------------------------.
-    | Path                                | Private                              |
-    +-------------------------------------+--------------------------------------+
-    | /css/...                            | /static/css                          |
-    | /favicon.ico/...                    | /static/favicon                      |
-    | /static/...                         | /static/serve_file                   |
-    '-------------------------------------+--------------------------------------'
-
-So the following URLs would be mapped as so:
-
-    localhost/css => $HOME/root/static/css
-    localhost/favicon.ico => $HOME/root/static/favicon.ico
-    localhost/static/a/b/c/d  => $HOME/root/static/a/b/c/d
-
-And you can use $c->uri_for for making links:
-
-    $c->uri_for($c->controller('static')->action_for('serve_file', 'base.css'));
+    sub myaction :Local {
+      my ($self, $c) = @_;
+      my $static_url = $c->uri_for(controller('Public')->uri_args('example.txt'));
+    }
 
 =head1 DESCRIPTION
 
-B<Note:> This class just extends L<Catalyst::ControllerRole::Public>.  All the main
-code is in that role.  You can do the same if it makes sense based on your programming
-organization needs.
+This is a simple controller that uses L<Catalyst::ActionRole::Public>
+to create a single public folder for you webapplication, doing as much
+of the right thing as possible.  Useful for starting a new project, although
+I imagine as time goes on you'll probably want something stronger.
 
-I prefer to have a controller to manage public assets since I like to use $c->uri_for
-and similar to construct paths.  Out of the box this controller does what I think is
-the mostly right thing, which is it serves public assets using something like
-L<Plack::App::Directory> or L<Plack::App::File> (if I am in production or not)
-from $HOME/root/${controller-namespace} and it also makes it easy to create private
-paths to public URLs in the way that makes sense to you.
+This controller doesn't do anything like compile LESS to CSS, etc.  If you
+are looking for that you might find L<Catalyst::Controller::SimpleCAS> has
+more power for what you wish.  This is really aimed at helping people move
+away from L<Catalyst::Plugin::Static::Simple> which I really don't want
+to support anymore :)
 
-If you inherit from this you will get a public URL endpoint which is the same as the
-controller's namespace.  That will serve files under your C<public_path>, which just
-defaults as already described.
+=head1 METHODS
 
-Althought this controller offers some configuration and features, unlike more complex
-systems (see L<Catalyst::Controller::Assets> for example) we do not attempt to full
-on 'Rails Asset pipeline' approach, such as building LESS to css or compiling CoffeeScript
-to Javascript.  The intention here is to be simple enough for people to use it with
-out a lot of documentation pondering.  Also in my experience Javascript developers and
-designers prefer to use there own tools and code generation pipelines, over any that
-comes bundled with L<Catalyst> (just an observation).  As a result this is aimed at
-serving up files that are ready to go.  The assumption is that your Javascript and designers
-will use their desired tools and build static versions of thier code into the correct
-directory.
+This controller defines the following methods
 
-=head1 CONFIGURATON
+=head2 uri_args
 
-See L<Catalyst::ControllerRole::Public>.
+Used as a helper to correctly generate a URI.  For example:
 
-=head1 ACTIONS
+    sub myaction :Local {
+      my ($self, $c) = @_;
+      my $static_url = $c->uri_for(controller('Public')
+        ->uri_args('example.txt'));
+    }
 
-See L<Catalyst::ControllerRole::Public>.
+=head1 ATTRIBUTES
+
+This controller defines the following configuration attributes.  They
+are pretty much all just wrappers for the same configuration options for
+the L<Catalyst::ActionRole::Public>
+
+=head2 at
+
+Template used to control how we build the path to find your public file.
+You probably want to leave this alone if you are seeking the most simple
+thing (which this controller is aimed at).  See the documentation for 'At'
+over in L<Catalyst::ActionRole::Public> if you really need to mess with this
+(and you might want the increased control that action role gives you anyway.
+
+=head2 content_types
+
+Content types that we allow to be served.  By default we allow all standard
+types (might be more than you want, if your public directory contains things
+you don't want the public to see.
+
+=head2 show_debugging
+
+Enabled developer debugging output.  Default to 0 (false, no debugging).  Change
+to 1 if you want extended debugging info.
+
+=head2 cache_control
+
+Used to set the Cache-Control HTTP header (useful for caching your static assets).
+
+Example values "public, max-age=600"
 
 =head1 AUTHOR
  
@@ -124,7 +136,7 @@ John Napiorkowski L<email:jjnapiork@cpan.org>
 =head1 SEE ALSO
  
 L<Catalyst>, L<Catalyst::Controller>, L<Plack::App::Directory>,
-L<Catalyst::Controller::Assets>.
+L<Catalyst::Controller::Assets>.  L<Catalyst::Controller::SimpleCAS>
  
 =head1 COPYRIGHT & LICENSE
  
@@ -134,3 +146,7 @@ This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
 =cut
+
+__END__
+
+ContentType
